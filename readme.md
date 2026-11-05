@@ -6,4 +6,4 @@ Neste projeto, quis pegar nessa mesma ideia e explorá-la através da programaç
 
 O output é uma experiência audiovisual interativa onde imagem e som estão em constante relação. Desta forma, a própria interação com a página procura transmitir a importância de parar, permanecer e dar espaço ao silêncio, prolongando o conceito da peça original para um novo meio.
 
-Para desenvolver o código, recorri ao ChatGPT e ao Claude como ferramenta de apoio técnico à programação. A ideia, o conceito e a direção artística do projeto foram durante todo o projeto da minha autoria.
+Para desenvolver o código, recorri ao ChatGPT e ao Claude como ferramenta de apoio técnico à programação. A ideia, o conceito e a direção artística do projeto foram durante todo o processo da minha autoria.
