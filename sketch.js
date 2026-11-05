@@ -1,18 +1,18 @@
 const VIDEO_FILE = 'performance.mp4';
 const CROP = { x: 0.18, y: 0.48, w: 0.66, h: 0.42 };
 const VOICES = 4;
-const SCALE = (0,1,3,6,7);
-const BASE = (45, 52, 57, 64);
-const CENTS = (0, 6, -7, 9); 
+const SCALE = [0, 1, 3, 6, 7];
+const BASE = [45, 52, 57, 64];
+const CENTS = [0, 6, -7, 9];
 const GW = 16, GH = 12;
 
 let video, sampler;
 let started = false;
-let tones = (), vibs = (), trems = (), gains = (), voice = ();
+let tones = [], vibs = [], trems = [], gains = [], voice = [];
 let prevLum = null;
 let calm = 0;
 let motion = 0;
-let bands = ();
+let bands = [];
 
 function setup () {
   createCanvas (windowWidth, windowHeight);
@@ -23,7 +23,7 @@ function setup () {
   sampler.pixelDensity (1);
 
   video = createVideo (VIDEO_FILE);
-  video.eltxmuted = true;
+  video.elt.muted = true;
   video.elt.playsInline = true;
   video.elt.loop = true;
   video.hide();
@@ -77,7 +77,7 @@ function start() {
 }  
 
 function draw () {
-  background (14,12,18);
+  background (0);
 
   if (!started) {
     drawIntro();
@@ -129,5 +129,100 @@ function analyseVideo() {
   }
 motion = lerp(motion, constrain((diffTotal / (GW * GH)) * 10, 0, 1), 0.1);
   prevLum = lumNow;
+}
+
+function updateSound () {
+  const glide = lerp (0.25, 0.01, calm); 
+  const agit = 1 - calm;
+
+  for (let i = 0; i < VOICES; i++) {
+    const b = bands[i], v = voice[i];
+
+   
+    const deg = Math.floor(b.hue * SCALE.length) % SCALE.length;
+    const midi = BASE[i] + SCALE[deg] + (calm < 0.5 ? 12 : 0);
+    v.freq += (midiToFreq(midi) - v.freq) * glide;
+    const f = v.freq * Math.pow(2, CENTS[i] / 1200);
+    tones[i].freq(f);
+    vibs[i].freq(lerp(1.2, 12, agit) * (1 + i * 0.17));
+    vibs[i].amp(f * (0.05 + 0.06 * motion));
+    trems[i].freq(lerp(1.5, 12, agit) * (1 + i * 0.11));
+     const target = b.sat * (0.35 + 0.65 * b.val) * 0.10;
+    v.amp += (target - v.amp) * 0.2;
+    gains[i].amp(v.amp, 0.05);
+  }
+}
+
+function drawVideo () {
+  const vw = video.elt.videoWidth, vh = video.elt.videoHeight;
+  if (!vw) return;
+  const sx = 0, sy = 0, sw = vw, sh= vh;
+  const k = Math.min(width / sw, height / sh) * 0.72;
+  const dw = sw * k, dh = sh * k;
+  const dx = (width - dw) / 2, dy = (height - dh) / 2 - dh * 0.25;
+  const ctx = drawingContext;
+
+  const ghost = (1 - calm) * 28;
+  if (ghost > 1) {
+    ctx.globalAlpha = 0.35;
+    ctx.drawImage(video.elt, sx, sy, sw, sh, dx - ghost, dy, dw, dh);
+    ctx.drawImage(video.elt, sx, sy, sw, sh, dx + ghost, dy, dw, dh);
+  }
+  ctx.globalAlpha = 1;
+  ctx.drawImage(video.elt, sx, sy, sw, sh, dx, dy, dw, dh);
+}
+
+function drawVingette () {
+  const ctx = drawingContext;
+  const r = Math.max(width, height);
+  const g = ctx.createRadialGradient(width / 2, height / 2, r * lerp(0.28, 0.08, calm), width / 2, height / 2, r * lerp(0.62, 0.38, calm));
+  g.addColorStop(0, 'rgba(14,12,18,0)');
+  g.addColorStop(1, 'rgba(14,12,18,1)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, width, height);
+}
+
+function drawHud() {
+  push();
+  colorMode(HSB, 360, 100, 100, 1);
+  noStroke();
+  for (let i = 0; i < VOICES; i++) {
+    fill(bands[i].hue * 360, 60, 95, 0.9);
+    circle(width / 2 + (i - 1.5) * 26, height - 54, 6 + voice[i].amp * 120);
+  }
+  fill(0, 0, 80, 0.8);
+  textAlign(CENTER);
+  textSize(12);
+  text('quietude ' + Math.round(calm * 100) + '%', width / 2, height - 24);
+  pop();
+}
+
+function drawIntro() {
+  fill(230);
+  noStroke();
+  textAlign(CENTER, CENTER);
+  textSize(min(32, width / 12));
+  text('performance do ficar', width / 2, height / 2 - 14);
+  textSize(14);
+  fill(160);
+  text('toca para entrar e fica quieta/o', width / 2, height / 2 + 22);
+}
+
+function windowResized() {
+  resizeCanvas(windowWidth, windowHeight);
+}
+
+function rgbToHsv(r, g, b) {
+  r /= 255; g /= 255; b /= 255;
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  let h = 0;
+  if (d) {
+    if (mx === r) h = ((g - b) / d) % 6;
+    else if (mx === g) h = (b - r) / d + 2;
+    else h = (r - g) / d + 4;
+    h /= 6;
+    if (h < 0) h += 1;
+  }
+  return [h, mx ? d / mx : 0, mx];
 }
 
